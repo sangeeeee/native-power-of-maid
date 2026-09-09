@@ -21,6 +21,7 @@ import net.jfrx.slashblade.maidnativepower.entity.ai.MaidMirageBladeBehavior;
 import net.jfrx.slashblade.maidnativepower.entity.ai.MaidSlashBladeMove;
 import net.jfrx.slashblade.maidnativepower.item.SlashBladeMaidBauble;
 import net.jfrx.slashblade.maidnativepower.util.MaidSlashBladeAttackUtils;
+import net.jfrx.slashblade.maidnativepower.util.MaidCombatRules;
 import net.jfrx.slashblade.maidnativepower.util.MaidSlashBladeMovementUtils;
 import org.jetbrains.annotations.NotNull;
 
@@ -99,6 +100,9 @@ public class MaidGuardHandler {
     }
 
     public static void trickToTarget(@NotNull EntityMaid maid, @NotNull LivingEntity target) {
+        if (MaidSlashBladeAttackUtils.isHoldingSlashBlade(maid) && !MaidCombatRules.canHarm(maid, target)) {
+            return;
+        }
         if (maid.level() instanceof ServerLevel serverLevel) {
             maid.refreshBrain(serverLevel);
         }

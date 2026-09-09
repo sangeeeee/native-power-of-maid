@@ -31,6 +31,7 @@ import net.jfrx.slashblade.maidnativepower.entity.ai.MaidSlashBladeAttack;
 import net.jfrx.slashblade.maidnativepower.entity.ai.MaidSlashBladeMove;
 import net.jfrx.slashblade.maidnativepower.item.SlashBladeMaidBauble;
 import net.jfrx.slashblade.maidnativepower.util.MaidSlashBladeAttackUtils;
+import net.jfrx.slashblade.maidnativepower.util.MaidCombatRules;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -97,6 +98,11 @@ public class TaskSlashBlade implements IAttackTask {
         return BladeStateAccess.of(stack).isPresent();
     }
 
+    @Override
+    public boolean canAttack(EntityMaid maid, LivingEntity target) {
+        return MaidCombatRules.canHarm(maid, target) && IAttackTask.super.canAttack(maid, target);
+    }
+
     private boolean hasSouls(EntityMaid maid) {
         BaubleItemHandler handler = maid.getMaidBauble();
         for (int i = 0; i < handler.getSlots(); ++i) {
@@ -114,7 +120,7 @@ public class TaskSlashBlade implements IAttackTask {
     }
 
     public static boolean farAway(LivingEntity target, EntityMaid maid) {
-        if (!target.isAlive()) {
+        if (!target.isAlive() || !maid.canAttack(target)) {
             return true;
         } else {
             if (SlashBladeMaidBauble.MirageBlade.checkBauble(maid) && SlashBladeMaidBauble.Trick.checkBauble(maid)) {

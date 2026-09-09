@@ -4,6 +4,7 @@
   "mixins": [
     "MixinAttackHelper",
     "MixinEntityMaid",
+    "MixinSummonedSword",
     "MixinTargetSelector"
   ],
   "package": "net.jfrx.slashblade.maidnativepower.mixin",

@@ -26,7 +26,6 @@ public class MaidKillEntityHandler {
                 }
             }
             if (event.getEntity() instanceof OwnableEntity ownable && ownable.getOwner() != null) {
-                maid.setTarget(ownable.getOwner());
                 MaidGuardHandler.trickToTarget(maid, ownable.getOwner());
             }
         }

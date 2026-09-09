@@ -148,7 +148,7 @@ public class MaidSlashBladeAttack {
             MemoryAccessor<IdF.Mu, NearestVisibleLivingEntities> visibleEntitiesAccessor,
             Mob mob) {
         LivingEntity target = instance.get(attackTargetAccessor);
-        if (!(mob instanceof EntityMaid maid)) {
+        if (!(mob instanceof EntityMaid maid) || !maid.canAttack(target)) {
             return false;
         }
         if (maid.level().getGameTime() % 4 != 0) {

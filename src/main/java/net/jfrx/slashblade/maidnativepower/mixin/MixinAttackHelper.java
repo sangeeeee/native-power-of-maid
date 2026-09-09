@@ -8,14 +8,24 @@ import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRan
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.util.AttackHelper;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Entity;
+import net.jfrx.slashblade.maidnativepower.util.MaidCombatRules;
 import net.jfrx.slashblade.maidnativepower.item.SlashBladeMaidBauble;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(AttackHelper.class)
 public abstract class MixinAttackHelper {
+    @Inject(method = "attack", at = @At("HEAD"), cancellable = true, remap = false)
+    private static void protectMaidMelee(LivingEntity attacker, Entity target, float comboRatio, CallbackInfo ci) {
+        if (attacker instanceof EntityMaid maid && !MaidCombatRules.canHarm(maid, target)) {
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "getRankBonus(Lnet/minecraft/world/entity/LivingEntity;)F", at = @At("HEAD"), cancellable = true, remap = false)
     private static void injectGetRankBonus(LivingEntity attacker, CallbackInfoReturnable<Float> cir) {
         if (attacker instanceof EntityMaid maid) {

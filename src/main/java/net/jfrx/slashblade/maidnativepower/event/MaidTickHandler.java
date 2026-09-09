@@ -20,6 +20,7 @@ import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.phys.AABB;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -31,6 +32,7 @@ import net.jfrx.slashblade.maidnativepower.item.SlashBladeMaidBauble;
 import net.jfrx.slashblade.maidnativepower.network.MaidRankSyncMessage;
 import net.jfrx.slashblade.maidnativepower.task.TaskSlashBlade;
 import net.jfrx.slashblade.maidnativepower.util.MaidSlashBladeAttackUtils;
+import net.jfrx.slashblade.maidnativepower.util.MaidCombatRules;
 import net.jfrx.slashblade.maidnativepower.util.MaidSlashBladeMovementUtils;
 import net.jfrx.slashblade.maidnativepower.util.JustSlashArtManager;
 
@@ -64,6 +66,17 @@ public class MaidTickHandler {
 
         maidTickCounter(maid, hasNativePower);
         maidBonus(maid, hasNativePower);
+        // Revalidate saved targets before ticking combos (e.g. after a safety setting changes).
+        LivingEntity attackTarget = maid.getTarget();
+        if (attackTarget != null && !maid.canAttack(attackTarget)) {
+            maid.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
+            maid.setTarget(null);
+        }
+        Entity lockedTarget = state.getTargetEntity(maid.level());
+        if (lockedTarget != null && (!MaidCombatRules.canHarm(maid, lockedTarget)
+                || MaidCombatRules.rootTarget(lockedTarget) instanceof LivingEntity living && !maid.canAttack(living))) {
+            state.setTargetEntityId(null);
+        }
         maid.getMainHandItem().inventoryTick(maid.level(), maid, 0, true);
 
         java.util.Optional.of(maid.getData(CapabilityConcentrationRank.RANK_POINT))

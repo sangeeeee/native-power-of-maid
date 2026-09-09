@@ -43,6 +43,7 @@ public class MaidMirageBladeBehavior extends Behavior<EntityMaid> {
         LivingEntity target = targetOpt.get();
         return MaidSlashBladeAttackUtils.isHoldingSlashBlade(maid)
                 && SlashBladeMaidBauble.MirageBlade.checkBauble(maid)
+                && maid.canAttack(target)
                 && maid.canSee(target);
     }
 
@@ -56,7 +57,7 @@ public class MaidMirageBladeBehavior extends Behavior<EntityMaid> {
     public void tick(@NotNull ServerLevel level, @NotNull EntityMaid maid, long gameTime) {
         LivingEntity target = maid.getBrain().getMemory(MemoryModuleType.ATTACK_TARGET).orElse(null);
         boolean nativePower = SlashBladeMaidBauble.NativePower.checkBauble(maid);
-        if (target == null) {
+        if (target == null || !maid.canAttack(target)) {
             return;
         }
         if (!BladeStateAccess.of(maid.getMainHandItem()).isPresent()) {
