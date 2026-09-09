@@ -26,6 +26,10 @@ On Windows use `gradlew.bat`. The installable mod is `build/libs/Native_POWER_of
 
 Validation covers eight GameTests: melee combat, soul component persistence/network encoding, anvil embedding, altar recipes, attribute cleanup, cooldown/resurrection behavior, combo and friendly-target rules, and rank payload encoding. The client smoke test checks task synchronization and actual blade drawing for both Bedrock and Gecko models. Its screenshot also allows visual checking of the rank billboard and model positioning.
 
+Blade placement uses the snapshot's existing held-item rendering entry points. The old extra layers combined a maid locator with the player motion rig's absolute height and fixed offsets, which displaced blades on differently sized models. The renderer now anchors the blade at the model's waist locator (or hand locator when the waist locator is absent), retaining the snapshot's coordinate conventions and model scale. Models without either locator keep the snapshot's fallback placement.
+
+SlashBlade-task animations apply `inverse(rest bone) * animated bone` in blade model units, so the player rig's absolute height is removed while combo motion is retained. Other tasks use the snapshot's original renderer. No model names or individual model corrections are used. The client regression check compares blade/sheath position and normal matrices with the snapshot at rest, tests active combo motion and return to rest, and checks missing-locator fallbacks. It covers Reimu, Cirno, Winefox, and mini Winefox.
+
 The migration uses NeoForge event registration and custom payloads, item data components for embedded souls, and the 1.21.1 `recipe/` data directory and altar recipe codec. It retains the local combo logic and permits other maid tasks to use Slash Arts without requiring the Judgement Cut souls.
 
 Migration references: [NeoForge data components](https://docs.neoforged.net/docs/1.21.1/items/datacomponents/), [NeoForge payload registration](https://docs.neoforged.net/docs/1.21.1/networking/payload/), and the supplied jars. The original 1.21.1 attachment was used for reference; the result is built from this repository's source.

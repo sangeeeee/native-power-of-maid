@@ -7,7 +7,6 @@ import mods.flammpfeil.slashblade.event.client.RenderOverrideEvent;
 import mods.flammpfeil.slashblade.registry.SlashBladeItems;
 import net.jfrx.slashblade.maidnativepower.NativePowerOfMaid;
 import net.jfrx.slashblade.maidnativepower.task.TaskSlashBlade;
-import net.jfrx.slashblade.maidnativepower.client.renderer.GeoLayerMaidBladeRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.core.BlockPos;
@@ -32,6 +31,7 @@ public final class ClientSmokeTest {
     private static int currentRenderer;
     private static int bedrockBlades;
     private static int geckoBlades;
+    private static final java.util.Set<String> checkedModels = new java.util.HashSet<>();
 
     @SubscribeEvent
     public static void beforeRender(RenderLivingEvent.Pre<?, ?> event) {
@@ -42,6 +42,7 @@ public final class ClientSmokeTest {
 
     @SubscribeEvent
     public static void renderBlade(RenderOverrideEvent event) {
+        if (BladePlacementChecks.capture(event)) return;
         if ("blade".equals(event.getTarget()) && !event.isCanceled()) {
             if (currentRenderer == 1) bedrockBlades++;
             if (currentRenderer == 2) geckoBlades++;
@@ -58,10 +59,11 @@ public final class ClientSmokeTest {
                 var rank = maid.getData(CapabilityConcentrationRank.RANK_POINT);
                 NativePowerOfMaid.LOGGER.info("Smoke maid model={}, blade={}, rank={}", maid.getModelId(), maid.getMainHandItem(), rank.getRank(maid.level().getGameTime()));
             }
-            if (event.getRenderer() instanceof GeckoEntityMaidRenderer<?> gecko) {
-                if (gecko.getLayerRenderers().stream().noneMatch(layer -> layer instanceof GeoLayerMaidBladeRenderer<?, ?>)) {
-                    throw new IllegalStateException("Animated Gecko blade layer was not registered");
-                }
+            if (ticks > 100 && checkedModels.add(maid.getModelId())) {
+                BladePlacementChecks.check(event, maid);
+                NativePowerOfMaid.LOGGER.info("BLADE PLACEMENT PASSED: {} (native rest, combo motion, return to rest)", maid.getModelId());
+            }
+            if (event.getRenderer() instanceof GeckoEntityMaidRenderer<?>) {
                 geckoFrames++;
             } else {
                 bedrockFrames++;
@@ -102,8 +104,8 @@ public final class ClientSmokeTest {
                 }
                 level.setDayTime(6000);
                 player.setGameMode(GameType.CREATIVE);
-                player.teleportTo(level, 1, 64, 6, 180, 10);
-                String[] models = {"touhou_little_maid:hakurei_reimu", "geckolib:winefox"};
+                player.teleportTo(level, 3, 64, 8, 180, 10);
+                String[] models = {"touhou_little_maid:hakurei_reimu", "touhou_little_maid:cirno", "geckolib:winefox", "geckolib:winefox_mini"};
                 for (int i = 0; i < models.length; i++) {
                     EntityMaid maid = new EntityMaid(level);
                     maid.setPos(i * 2, 64, 0);
@@ -118,6 +120,7 @@ public final class ClientSmokeTest {
             });
         }
         if (++ticks == 160) {
+            if (checkedModels.size() != 4) throw new AssertionError("Missing placement checks: " + checkedModels);
             if (bedrockFrames < 3 || geckoFrames < 3) {
                 throw new IllegalStateException("Missing maid renders: Bedrock=" + bedrockFrames + ", Gecko=" + geckoFrames);
             }

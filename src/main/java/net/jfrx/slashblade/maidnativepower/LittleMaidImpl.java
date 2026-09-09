@@ -2,17 +2,8 @@ package net.jfrx.slashblade.maidnativepower;
 
 import com.github.tartaricacid.touhoulittlemaid.api.ILittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.api.LittleMaidExtension;
-import com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.EntityMaidRenderer;
-import com.github.tartaricacid.touhoulittlemaid.client.renderer.entity.GeckoEntityMaidRenderer;
 import com.github.tartaricacid.touhoulittlemaid.entity.task.TaskManager;
-import com.github.tartaricacid.touhoulittlemaid.geckolib3.geo.GeoLayerRenderer;
 import com.github.tartaricacid.touhoulittlemaid.item.bauble.BaubleManager;
-import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.world.entity.Mob;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
-import net.jfrx.slashblade.maidnativepower.client.renderer.GeoLayerMaidBladeRenderer;
-import net.jfrx.slashblade.maidnativepower.client.renderer.LayerMaidBladeRenderer;
 import net.jfrx.slashblade.maidnativepower.init.MaidPowerItems;
 import net.jfrx.slashblade.maidnativepower.item.SlashBladeMaidBauble;
 import net.jfrx.slashblade.maidnativepower.task.TaskSlashBlade;
@@ -58,16 +49,4 @@ public class LittleMaidImpl implements ILittleMaid {
         manager.bind(MaidPowerItems.SOUL_OF_NATIVE_POWER.get(), NATIVE_POWER_BAUBLE);
     }
 
-    @Override
-    @OnlyIn(Dist.CLIENT)
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public void addAdditionGeckoMaidLayer(GeckoEntityMaidRenderer<? extends Mob> renderer, EntityRendererProvider.Context context) {
-        renderer.addLayer((GeoLayerRenderer) new GeoLayerMaidBladeRenderer<>(renderer));
-    }
-
-    @Override
-    @OnlyIn(Dist.CLIENT)
-    public void addAdditionMaidLayer(EntityMaidRenderer renderer, EntityRendererProvider.Context context) {
-        renderer.addLayer(new LayerMaidBladeRenderer<>(renderer));
-    }
 }

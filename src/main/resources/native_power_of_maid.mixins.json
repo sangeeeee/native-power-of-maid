@@ -9,7 +9,6 @@
   "package": "net.jfrx.slashblade.maidnativepower.mixin",
   "required": true,
   "client": [
-    "MixinLayerMainBlade",
     "MixinSlashBladeRender"
   ],
   "injectors": {
