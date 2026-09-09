@@ -3,10 +3,10 @@ package net.jfrx.slashblade.maidnativepower.event;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
-@Mod.EventBusSubscriber
+@EventBusSubscriber(modid = "native_power_of_maid")
 public class DoSlashHandler {
     public static final String LAST_DO_SLASH_TIME = "nativePowerOfMaid.lastDoSlashTime";
 

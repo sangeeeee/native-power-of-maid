@@ -1,8 +1,8 @@
 package net.jfrx.slashblade.maidnativepower.mixin;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import com.github.tartaricacid.touhoulittlemaid.api.entity.IMaid;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.util.TargetSelector;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -20,11 +20,11 @@ public abstract class MixinEntityMaid extends TamableAnimal implements CrossbowA
         super(pEntityType, pLevel);
     }
 
-    @Inject(method = "getMeleeAttackRangeSqr(Lnet/minecraft/world/entity/LivingEntity;)D", at = @At("HEAD"), cancellable = true)
-    private void injectGetMeleeAttackRangeSqr(LivingEntity entity, CallbackInfoReturnable<Double> cir) {
-        this.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).ifPresent(state -> {
+    @Inject(method = "isWithinMeleeAttackRange(Lnet/minecraft/world/entity/LivingEntity;)Z", at = @At("HEAD"), cancellable = true)
+    private void injectIsWithinMeleeAttackRange(LivingEntity entity, CallbackInfoReturnable<Boolean> cir) {
+        BladeStateAccess.of(this.getMainHandItem()).ifPresent(state -> {
             double reach = TargetSelector.getResolvedReach(this);
-            cir.setReturnValue(reach * reach);
+            cir.setReturnValue(this.distanceToSqr(entity) < reach * reach);
         });
     }
 }

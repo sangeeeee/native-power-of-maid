@@ -1,11 +1,9 @@
 package net.jfrx.slashblade.maidnativepower.util;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
-import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
-import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.registry.SlashArtsRegistry;
 import mods.flammpfeil.slashblade.registry.combo.ComboState;
@@ -13,15 +11,12 @@ import mods.flammpfeil.slashblade.slasharts.SlashArts;
 import mods.flammpfeil.slashblade.util.AdvancementHelper;
 import mods.flammpfeil.slashblade.util.AttackManager;
 import mods.flammpfeil.slashblade.util.KnockBacks;
-import net.minecraft.client.Minecraft;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.MinecraftForge;
+import net.neoforged.neoforge.common.NeoForge;
 import net.jfrx.slashblade.maidnativepower.entity.ai.MaidSlashBladeAttack;
 import net.jfrx.slashblade.maidnativepower.event.ChargeActionHandler;
 import net.jfrx.slashblade.maidnativepower.event.api.MaidProgressComboEvent;
@@ -46,15 +41,15 @@ public class MaidSlashBladeAttackUtils {
     public static final TriConsumer<EntityMaid, ISlashBladeState, LivingEntity> NORMAL_SLASHBLADE_ATTACK = MaidSlashBladeAttackUtils::normalSlashBladeAttack;
 
     public static boolean isHoldingSlashBlade(Mob mob) {
-        return !mob.getMainHandItem().isEmpty() && mob.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).isPresent();
+        return !mob.getMainHandItem().isEmpty() && BladeStateAccess.of(mob.getMainHandItem()).isPresent();
     }
 
     public static boolean canInterruptCombo(EntityMaid maid) {
-        return maid.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).map(state -> {
+        return BladeStateAccess.of(maid.getMainHandItem()).map(state -> {
             ResourceLocation currentLoc = state.resolvCurrentComboState(maid);
-            ComboState current = ComboStateRegistry.REGISTRY.get().getValue(currentLoc);
+            ComboState current = ComboStateRegistry.REGISTRY.get(currentLoc);
             if (current != null) {
-                ComboState next = ComboStateRegistry.REGISTRY.get().getValue(current.getNextOfTimeout(maid));
+                ComboState next = ComboStateRegistry.REGISTRY.get(current.getNextOfTimeout(maid));
                 if (SlashBladeMaidBauble.NativePower.checkBauble(maid)) {
                     return !MaidSlashBladeAttack.NATIVE_POWER_UNINTERRUPTIBLE_COMBO.contains(current) && !MaidSlashBladeAttack.NATIVE_POWER_UNINTERRUPTIBLE_COMBO.contains(next);
                 }
@@ -96,7 +91,7 @@ public class MaidSlashBladeAttackUtils {
 
     private static void rapidSlashAttack(EntityMaid maid, ISlashBladeState state, LivingEntity target) {
         ResourceLocation currentLoc = state.resolvCurrentComboState(maid);
-        ComboState current = ComboStateRegistry.REGISTRY.get().getValue(currentLoc);
+        ComboState current = ComboStateRegistry.REGISTRY.get(currentLoc);
         maid.lookAt(EntityAnchorArgument.Anchor.FEET, target.position());
         if (current != null) {
             ResourceLocation next = current.getNext(maid);
@@ -124,10 +119,10 @@ public class MaidSlashBladeAttackUtils {
             }
             ResourceLocation comboLoc = SlashArtsRegistry.JUDGEMENT_CUT.get().doArts(type, maid);
             SlashBladeEvent.PerformSlashArtEvent event = new SlashBladeEvent.PerformSlashArtEvent(maid, elapsed, state, comboLoc, type);
-            MinecraftForge.EVENT_BUS.post(event);
+            NeoForge.EVENT_BUS.post(event);
             if (!event.isCanceled()) {
                 comboLoc = event.getComboState();
-                ComboState combo = ComboStateRegistry.REGISTRY.get().getValue(comboLoc);
+                ComboState combo = ComboStateRegistry.REGISTRY.get(comboLoc);
                 if (combo != null && comboLoc != ComboStateRegistry.NONE.getId()) {
                     state.updateComboSeq(maid, comboLoc);
                 }
@@ -140,9 +135,9 @@ public class MaidSlashBladeAttackUtils {
             return false;
         }
         ResourceLocation currentLoc = state.resolvCurrentComboState(maid);
-        ComboState current = ComboStateRegistry.REGISTRY.get().getValue(currentLoc);
+        ComboState current = ComboStateRegistry.REGISTRY.get(currentLoc);
         if (current != null) {
-            ComboState next = ComboStateRegistry.REGISTRY.get().getValue(current.getNextOfTimeout(maid));
+            ComboState next = ComboStateRegistry.REGISTRY.get(current.getNextOfTimeout(maid));
             boolean just = SlashBladeMaidBauble.JustJudgementCut.checkBauble(maid);
             if (SlashBladeMaidBauble.NativePower.checkBauble(maid) && MaidSlashBladeAttack.NATIVE_POWER_CHARGE_COMBO.contains(current)) {
                 JUDGEMENT_CUT.accept(maid, state, target);
@@ -162,7 +157,7 @@ public class MaidSlashBladeAttackUtils {
 
     private static void normalSlashBladeAttack(EntityMaid maid, ISlashBladeState state, LivingEntity target) {
         ResourceLocation currentLoc = state.resolvCurrentComboState(maid);
-        ComboState current = ComboStateRegistry.REGISTRY.get().getValue(currentLoc);
+        ComboState current = ComboStateRegistry.REGISTRY.get(currentLoc);
         maid.lookAt(EntityAnchorArgument.Anchor.FEET, target.position());
         if (current != null) {
             ResourceLocation nextLoc = current.getNext(maid);
@@ -182,32 +177,12 @@ public class MaidSlashBladeAttackUtils {
             } else {
                 if (!nextLoc.equals(currentLoc)) {
                     MaidProgressComboEvent event = new MaidProgressComboEvent(maid, target, currentLoc, nextLoc);
-                    MinecraftForge.EVENT_BUS.post(event);
+                    NeoForge.EVENT_BUS.post(event);
                     if (!event.isCanceled()) {
                         state.progressCombo(maid);
                     }
                 }
             }
         }
-    }
-    
-    @OnlyIn(Dist.CLIENT)
-    public static BiConsumer<Long, Integer> setClientRank() {
-        return (point, entityId) -> {
-            if (Minecraft.getInstance().level != null) {
-                Entity entity = Minecraft.getInstance().level.getEntity(entityId);
-                if (entity != null) {
-                    entity.getCapability(CapabilityConcentrationRank.RANK_POINT).ifPresent(cr -> {
-                        long time = entity.level().getGameTime();
-                        IConcentrationRank.ConcentrationRanks oldRank = cr.getRank(time);
-                        cr.setRawRankPoint(point);
-                        cr.setLastUpdte(time);
-                        if (oldRank.level < cr.getRank(time).level) {
-                            cr.setLastRankRise(time);
-                        }
-                    });
-                }
-            }
-        };
     }
 }

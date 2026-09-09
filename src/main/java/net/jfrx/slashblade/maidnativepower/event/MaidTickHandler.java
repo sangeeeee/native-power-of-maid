@@ -1,13 +1,12 @@
 package net.jfrx.slashblade.maidnativepower.event;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import com.github.tartaricacid.touhoulittlemaid.api.event.MaidTickEvent;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import mods.flammpfeil.slashblade.ability.ArrowReflector;
-import mods.flammpfeil.slashblade.capability.concentrationrank.ConcentrationRankCapabilityProvider;
-import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
+import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.entity.IShootable;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.registry.ModAttributes;
 import mods.flammpfeil.slashblade.slasharts.JudgementCut;
@@ -15,7 +14,6 @@ import mods.flammpfeil.slashblade.slasharts.SlashArts;
 import mods.flammpfeil.slashblade.util.TargetSelector;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
@@ -24,15 +22,13 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.common.ForgeMod;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.jfrx.slashblade.maidnativepower.entity.ai.MaidMirageBladeBehavior;
 import net.jfrx.slashblade.maidnativepower.entity.ai.MaidSlashBladeMove;
 import net.jfrx.slashblade.maidnativepower.item.SlashBladeMaidBauble;
 import net.jfrx.slashblade.maidnativepower.network.MaidRankSyncMessage;
-import net.jfrx.slashblade.maidnativepower.network.NetworkManager;
 import net.jfrx.slashblade.maidnativepower.task.TaskSlashBlade;
 import net.jfrx.slashblade.maidnativepower.util.MaidSlashBladeAttackUtils;
 import net.jfrx.slashblade.maidnativepower.util.MaidSlashBladeMovementUtils;
@@ -40,18 +36,25 @@ import net.jfrx.slashblade.maidnativepower.util.JustSlashArtManager;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
-@Mod.EventBusSubscriber
+@EventBusSubscriber(modid = "native_power_of_maid")
 public class MaidTickHandler {
     public static final String NATIVE_POWER_RANK = "nativePowerOfMaid.nativepowerRank";
+    private static final ResourceLocation FOLLOW_RANGE_BONUS = net.jfrx.slashblade.maidnativepower.NativePowerOfMaid.prefix("maid_slashblade_radius_bonus");
+    private static final ResourceLocation DAMAGE_BONUS = net.jfrx.slashblade.maidnativepower.NativePowerOfMaid.prefix("maid_slashblade_unawakened_soul_bonus");
+    private static final ResourceLocation REACH_BONUS = net.jfrx.slashblade.maidnativepower.NativePowerOfMaid.prefix("maid_slashblade_true_power_bonus");
 
     @SubscribeEvent
     public static void onMaidTickEvent(MaidTickEvent event) {
-        // TODO: 把这个事件分成两部分，一部分只在【拔刀剑攻击】下使用，一部分只要手持总是生效。
         EntityMaid maid = event.getMaid();
-        if (maid.getTask().getUid() != TaskSlashBlade.UID){return;}
-        maid.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+        if (maid.level().isClientSide()) {
+            return;
+        }
+        if (!TaskSlashBlade.UID.equals(maid.getTask().getUid()) || !MaidSlashBladeAttackUtils.isHoldingSlashBlade(maid)) {
+            clearBonuses(maid);
+            return;
+        }
+        BladeStateAccess.of(maid.getMainHandItem())
                 .ifPresent(state -> handleMaidTick(maid, state));
     }
 
@@ -63,7 +66,7 @@ public class MaidTickHandler {
         maidBonus(maid, hasNativePower);
         maid.getMainHandItem().inventoryTick(maid.level(), maid, 0, true);
 
-        maid.getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
+        java.util.Optional.of(maid.getData(CapabilityConcentrationRank.RANK_POINT))
                 .ifPresent(rank -> {
                     if (hasNativePower) {
                         long rankPoint = Math.min(Math.max(rank.getRankPoint(maid.level().getGameTime()), data.getLong(NATIVE_POWER_RANK)), rank.getMaxCapacity());
@@ -72,17 +75,15 @@ public class MaidTickHandler {
                         data.putLong(NATIVE_POWER_RANK, rankPoint);
                     }
 
-                    if (maid.getOwner() instanceof ServerPlayer serverPlayer) {
-                        MaidRankSyncMessage message = new MaidRankSyncMessage();
-                        message.rawPoint = Math.min(rank.getRankPoint(maid.level().getGameTime()), rank.getMaxCapacity());
-                        message.entityId = maid.getId();
-                        NetworkManager.INSTANCE.send(PacketDistributor.PLAYER.with(() -> serverPlayer), message);
+                    if (maid.level().getGameTime() % 20 == 0) {
+                        PacketDistributor.sendToPlayersTrackingEntity(maid, new MaidRankSyncMessage(
+                                Math.min(rank.getRankPoint(maid.level().getGameTime()), rank.getMaxCapacity()), maid.getId()));
                     }
                 });
 
         boolean canTrick = MaidSlashBladeMovementUtils.canTrick(maid);
         Entity target = state.getTargetEntity(maid.level());
-        boolean canAirTrick = canTrick && SlashBladeMaidBauble.MirageBlade.checkBauble(maid);
+        boolean canAirTrick = canTrick && SlashBladeMaidBauble.MirageBlade.checkBauble(maid) && target != null;
 
         if (target != null) {
             canAirTrick &= target.isAlive();
@@ -115,13 +116,10 @@ public class MaidTickHandler {
         int cost = Math.max(1, Math.max(0, 4 - favorabilityLevel) / (hasNativePower ? 2 : 1));
         if (SlashBladeMaidBauble.Health.checkBauble(maid) && maid.getHealth() < maid.getMaxHealth()) {
             boolean isGuarding = MaidGuardHandler.isGuarding(maid);
-            if (!hasNativePower && !isGuarding && maid.level().getGameTime() % 10 != 0) {
-                return;
-            }
-            if (state.getProudSoulCount() >= cost) {
+            if ((hasNativePower || isGuarding || maid.level().getGameTime() % 10 == 0) && state.getProudSoulCount() >= cost) {
                 state.setProudSoulCount(state.getProudSoulCount() - cost);
                 if (hasNativePower) {
-                    maid.setHealth(Math.max(maid.getHealth() + favorabilityLevel * (isGuarding ? 2 : 1), maid.getMaxHealth()));
+                    maid.setHealth(Math.min(maid.getHealth() + favorabilityLevel * (isGuarding ? 2 : 1), maid.getMaxHealth()));
                 } else {
                     maid.heal(favorabilityLevel * 0.5F);
                 }
@@ -130,7 +128,7 @@ public class MaidTickHandler {
         if (state.isBroken() && SlashBladeMaidBauble.Exp.checkBauble(maid)) {
             if (maid.getExperience() >= cost) {
                 maid.setExperience(maid.getExperience() - cost);
-                state.setDamage(state.getDamage() - favorabilityLevel);
+                state.setDamage(Math.max(0, state.getDamage() - favorabilityLevel));
                 if (state.getDamage() <= 0) {
                     state.setBroken(false);
                 }
@@ -142,47 +140,47 @@ public class MaidTickHandler {
         if (hasNativePower && data.getInt(MaidSlashBladeAttackUtils.SUPER_JUDGEMENT_CUT_COUNTER_KEY) <= 0) {
             Map.Entry<Integer, ResourceLocation> currentLoc = state.resolvCurrentComboStateTicks(maid);
             ResourceLocation csLoc = state.getSlashArts().doArts(SlashArts.ArtsType.Super, maid);
-            if (csLoc != ComboStateRegistry.NONE.getId() && !currentLoc.getValue().equals(csLoc)) {
+            if (!csLoc.equals(ComboStateRegistry.NONE.getId()) && !currentLoc.getValue().equals(csLoc)) {
                 data.putInt(MaidSlashBladeAttackUtils.SUPER_JUDGEMENT_CUT_COUNTER_KEY, 2400);
 
-                AttributeInstance entityReachAttributeInstance = maid.getAttribute(ForgeMod.ENTITY_REACH.get());
+                AttributeInstance entityReachAttributeInstance = maid.getAttribute(Attributes.ENTITY_INTERACTION_RANGE);
                 if (entityReachAttributeInstance == null) {
                     return;
                 }
 
                 double radius = TaskSlashBlade.getRadius(maid);
-                int rank = maid.getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
-                        .map(cr -> cr.getRank(maid.level().getGameTime()))
-                        .orElse(IConcentrationRank.ConcentrationRanks.NONE).level;
+                int rank = maid.getData(CapabilityConcentrationRank.RANK_POINT).getRank(maid.level().getGameTime()).level;
                 double bonus = radius / Math.max(TargetSelector.getResolvedReach(maid), 1) * rank / 7;
 
                 AttributeModifier entityReachBonus = new AttributeModifier(
-                        UUID.fromString("a7333e5f-d97e-465c-98c7-281a82396d6b"),
-                        "Maid SuperJudgementCut Transient Bonus", bonus, AttributeModifier.Operation.MULTIPLY_TOTAL);
+                        net.jfrx.slashblade.maidnativepower.NativePowerOfMaid.prefix("maid_superjudgementcut_transient_bonus"), bonus, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
 
-                entityReachAttributeInstance.addTransientModifier(entityReachBonus);
-                JudgementCut.doJudgementCutSuper(maid);
+                entityReachAttributeInstance.addOrUpdateTransientModifier(entityReachBonus);
+                try {
+                    JudgementCut.doJudgementCutSuper(maid);
 
-                AABB aabb = maid.getBoundingBox().inflate(48.0F);
-                double reach = TargetSelector.getResolvedReach(maid) + 32.0;
+                    AABB aabb = maid.getBoundingBox().inflate(48.0F);
+                    double reach = TargetSelector.getResolvedReach(maid) + 32.0;
 
-                maid.level().getEntitiesOfClass(Projectile.class, aabb).stream()
-                        .filter(e -> {
-                            Entity owner = (e instanceof IShootable iShootable) ?
-                                    iShootable.getShooter() : e.getOwner();
-                            if (owner != null) {
-                                return !owner.equals(maid) &&
-                                        !owner.equals(maid.getOwner()) &&
-                                        ((owner instanceof OwnableEntity ownable) && Objects.equals(ownable.getOwner(), maid.getOwner()));
-                            } else {
-                                return true;
-                            }
-                        })
-                        .filter(e -> (e.distanceToSqr(maid) < (reach * reach)))
-                        .forEach(e -> ArrowReflector.doReflect(e, maid));
+                    maid.level().getEntitiesOfClass(Projectile.class, aabb).stream()
+                            .filter(e -> {
+                                Entity owner = (e instanceof IShootable iShootable) ?
+                                        iShootable.getShooter() : e.getOwner();
+                                if (owner != null) {
+                                    return !owner.equals(maid) && !owner.equals(maid.getOwner()) && !maid.isAlliedTo(owner)
+                                            && !(owner instanceof OwnableEntity ownable
+                                            && (Objects.equals(ownable.getOwnerUUID(), maid.getUUID())
+                                            || maid.getOwnerUUID() != null && Objects.equals(ownable.getOwnerUUID(), maid.getOwnerUUID())));
+                                } else {
+                                    return true;
+                                }
+                            })
+                            .filter(e -> (e.distanceToSqr(maid) < (reach * reach)))
+                            .forEach(e -> ArrowReflector.doReflect(e, maid));
 
-
-                entityReachAttributeInstance.removeModifier(entityReachBonus);
+                } finally {
+                    entityReachAttributeInstance.removeModifier(entityReachBonus);
+                }
             }
         }
     }
@@ -226,7 +224,7 @@ public class MaidTickHandler {
 
         long cooldown = JustSlashArtManager.getJustCooldown(maid);
         if (cooldown > 0) {
-            cooldown -= nativePower;
+            cooldown = Math.max(0, cooldown - nativePower);
             JustSlashArtManager.setJustCooldown(maid, cooldown);
             if (cooldown == 0) {
                 JustSlashArtManager.resetJustCount(maid);
@@ -241,34 +239,43 @@ public class MaidTickHandler {
             radius *= 3;
         }
         AttributeModifier followRangeBonus = new AttributeModifier(
-                UUID.fromString("5a138a12-3f1a-40ab-98cf-9532bd9881ce"),
-                "Maid SlashBlade Radius Bonus", radius, AttributeModifier.Operation.ADDITION);
+                FOLLOW_RANGE_BONUS, radius, AttributeModifier.Operation.ADD_VALUE);
         AttributeInstance followRangeAttributeInstance = maid.getAttribute(Attributes.FOLLOW_RANGE);
         if (followRangeAttributeInstance == null) {
             return;
         }
         followRangeAttributeInstance.removeModifier(followRangeBonus);
-        followRangeAttributeInstance.addPermanentModifier(followRangeBonus);
+        followRangeAttributeInstance.addTransientModifier(followRangeBonus);
 
         AttributeModifier slashBladeDamageBonus = new AttributeModifier(
-                UUID.fromString("b70ee5b2-c9c8-45a9-a959-9db875d2c56e"),
-                "Maid SlashBlade Unawakened Soul Bonus", SlashBladeMaidBauble.getBaubleCountForClass(maid, SlashBladeMaidBauble.UnawakenedSoul.class) * 0.1,
-                AttributeModifier.Operation.MULTIPLY_TOTAL);
-        AttributeInstance slashBladeDamageInstance = maid.getAttribute(ModAttributes.SLASHBLADE_DAMAGE.get());
+                DAMAGE_BONUS, SlashBladeMaidBauble.getBaubleCountForClass(maid, SlashBladeMaidBauble.UnawakenedSoul.class) * 0.1,
+                AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+        AttributeInstance slashBladeDamageInstance = maid.getAttribute(ModAttributes.SLASHBLADE_DAMAGE);
         if (slashBladeDamageInstance == null) {
             return;
         }
         slashBladeDamageInstance.removeModifier(slashBladeDamageBonus);
-        slashBladeDamageInstance.addPermanentModifier(slashBladeDamageBonus);
+        slashBladeDamageInstance.addTransientModifier(slashBladeDamageBonus);
 
         AttributeModifier entityReachBonus = new AttributeModifier(
-                UUID.fromString("5dd047e5-bb60-4ebf-93ba-34a1ece10128"),
-                "Maid SlashBlade True Power Bonus", hasNativePower ? 2.5 : 0.5, AttributeModifier.Operation.ADDITION);
-        AttributeInstance entityReachAttributeInstance = maid.getAttribute(ForgeMod.ENTITY_REACH.get());
+                REACH_BONUS, hasNativePower ? 2.5 : 0.5, AttributeModifier.Operation.ADD_VALUE);
+        AttributeInstance entityReachAttributeInstance = maid.getAttribute(Attributes.ENTITY_INTERACTION_RANGE);
         if (entityReachAttributeInstance == null) {
             return;
         }
         entityReachAttributeInstance.removeModifier(entityReachBonus);
-        entityReachAttributeInstance.addPermanentModifier(entityReachBonus);
+        entityReachAttributeInstance.addTransientModifier(entityReachBonus);
+    }
+
+    private static void clearBonuses(EntityMaid maid) {
+        removeBonus(maid.getAttribute(Attributes.FOLLOW_RANGE), FOLLOW_RANGE_BONUS);
+        removeBonus(maid.getAttribute(ModAttributes.SLASHBLADE_DAMAGE), DAMAGE_BONUS);
+        removeBonus(maid.getAttribute(Attributes.ENTITY_INTERACTION_RANGE), REACH_BONUS);
+    }
+
+    private static void removeBonus(AttributeInstance attribute, ResourceLocation id) {
+        if (attribute != null) {
+            attribute.removeModifier(id);
+        }
     }
 }

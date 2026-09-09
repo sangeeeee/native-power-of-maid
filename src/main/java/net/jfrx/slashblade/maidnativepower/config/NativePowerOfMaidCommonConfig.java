@@ -4,25 +4,25 @@ import com.google.common.collect.Range;
 import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
 import com.google.common.util.concurrent.AtomicDouble;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.event.server.ServerStartingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.common.ModConfigSpec;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Mod.EventBusSubscriber
+@EventBusSubscriber(modid = "native_power_of_maid")
 public class NativePowerOfMaidCommonConfig {
-    public static final ForgeConfigSpec COMMON_CONFIG;
+    public static final ModConfigSpec COMMON_CONFIG;
 
-    public static final ForgeConfigSpec.ConfigValue<List<? extends List<?>>> UNAWAKENED_SOUL_LIST;
-    public static final ForgeConfigSpec.IntValue NATIVE_POWER_MAX_SOUL_COUNT;
+    public static final ModConfigSpec.ConfigValue<List<? extends List<?>>> UNAWAKENED_SOUL_LIST;
+    public static final ModConfigSpec.IntValue NATIVE_POWER_MAX_SOUL_COUNT;
 
     static {
-        ForgeConfigSpec.Builder commonBuilder = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder commonBuilder = new ModConfigSpec.Builder();
 
         commonBuilder.comment("TLM: True POWER common settings");
 

@@ -1,5 +1,6 @@
 package net.jfrx.slashblade.maidnativepower.task;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import com.github.tartaricacid.touhoulittlemaid.api.bauble.IMaidBauble;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IAttackTask;
 import com.github.tartaricacid.touhoulittlemaid.api.task.IRangedAttackTask;
@@ -11,8 +12,7 @@ import com.google.common.collect.Lists;
 import com.mojang.datafixers.util.Pair;
 import mods.flammpfeil.slashblade.SlashBlade;
 import mods.flammpfeil.slashblade.data.builtin.SlashBladeBuiltInRegistry;
-import mods.flammpfeil.slashblade.init.SBItems;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
+import mods.flammpfeil.slashblade.registry.SlashBladeItems;
 import mods.flammpfeil.slashblade.registry.slashblade.SlashBladeDefinition;
 import mods.flammpfeil.slashblade.util.TargetSelector;
 import net.minecraft.client.Minecraft;
@@ -51,10 +51,10 @@ public class TaskSlashBlade implements IAttackTask {
         if (Minecraft.getInstance().player != null) {
             Registry<SlashBladeDefinition> bladeRegistry = SlashBlade.getSlashBladeDefinitionRegistry(Minecraft.getInstance().player.level());
             if (bladeRegistry.containsKey(SlashBladeBuiltInRegistry.YAMATO)) {
-                return Objects.requireNonNull(bladeRegistry.get(SlashBladeBuiltInRegistry.YAMATO)).getBlade();
+                return Objects.requireNonNull(bladeRegistry.get(SlashBladeBuiltInRegistry.YAMATO)).getBlade(Minecraft.getInstance().player.registryAccess());
             }
         }
-        return SBItems.slashblade.getDefaultInstance();
+        return SlashBladeItems.SLASHBLADE.get().getDefaultInstance();
     }
 
     @Override
@@ -94,7 +94,7 @@ public class TaskSlashBlade implements IAttackTask {
 
     @Override
     public boolean isWeapon(@NotNull EntityMaid maid, ItemStack stack) {
-        return stack.getCapability(ItemSlashBlade.BLADESTATE).isPresent();
+        return BladeStateAccess.of(stack).isPresent();
     }
 
     private boolean hasSouls(EntityMaid maid) {

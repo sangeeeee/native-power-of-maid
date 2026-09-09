@@ -2,19 +2,17 @@ package net.jfrx.slashblade.maidnativepower.item;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
 import net.jfrx.slashblade.maidnativepower.NativePowerOfMaid;
 import net.jfrx.slashblade.maidnativepower.config.NativePowerOfMaidCommonConfig;
-import net.jfrx.slashblade.maidnativepower.util.ItemTagHelper;
+import net.jfrx.slashblade.maidnativepower.init.MaidPowerDataComponents;
+import net.minecraft.world.item.component.ItemContainerContents;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +26,8 @@ public class NativePowerBaubleItem extends SlashBladeMaidBaubleItem {
     }
 
     @Override
-    public void appendHoverText(@NotNull ItemStack stack, @Nullable Level level, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
+    @OnlyIn(Dist.CLIENT)
+    public void appendHoverText(@NotNull ItemStack stack, TooltipContext context, @NotNull List<Component> tooltip, @NotNull TooltipFlag flag) {
         if (!Screen.hasShiftDown() && !Screen.hasAltDown()) {
             tooltip.add(Component.translatable("item.native_power_of_maid.tooltips"));
             tooltip.add(Component.translatable("item.native_power_of_maid.soul_of_native_power.tooltips.alt"));
@@ -51,22 +50,19 @@ public class NativePowerBaubleItem extends SlashBladeMaidBaubleItem {
     }
 
     public static void addSoul(ItemStack itemStack, ItemStack soul) {
-        ListTag listTag = ItemTagHelper.getList(itemStack, NATIVE_POWER_SOULS_KEY, Tag.TAG_COMPOUND, false);
-        listTag.add(soul.serializeNBT());
-        if (listTag.size() > NativePowerOfMaidCommonConfig.NATIVE_POWER_MAX_SOUL_COUNT.get()) {
-            listTag.remove(0);
+        int limit = NativePowerOfMaidCommonConfig.NATIVE_POWER_MAX_SOUL_COUNT.get();
+        List<ItemStack> souls = new ArrayList<>(getSouls(itemStack));
+        if (limit > 0 && !soul.isEmpty()) {
+            souls.add(soul.copyWithCount(1));
         }
-        ItemTagHelper.setList(itemStack, NATIVE_POWER_SOULS_KEY, listTag);
+        if (souls.size() > limit) {
+            souls = new ArrayList<>(souls.subList(souls.size() - limit, souls.size()));
+        }
+        itemStack.set(MaidPowerDataComponents.NATIVE_POWER_SOULS, ItemContainerContents.fromItems(souls));
     }
 
     public static List<ItemStack> getSouls(ItemStack itemStack) {
-        ListTag listTag = ItemTagHelper.getList(itemStack, NATIVE_POWER_SOULS_KEY, Tag.TAG_COMPOUND, false);
-        List<ItemStack> list = new ArrayList<>();
-        listTag.forEach(tag -> {
-            if (tag instanceof CompoundTag compoundTag) {
-                list.add(ItemStack.of(compoundTag));
-            }
-        });
-        return list;
+        return itemStack.getOrDefault(MaidPowerDataComponents.NATIVE_POWER_SOULS, ItemContainerContents.EMPTY)
+                .stream().toList();
     }
 }

@@ -14,29 +14,28 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.jfrx.slashblade.maidnativepower.event.MaidTickHandler;
 import net.jfrx.slashblade.maidnativepower.event.api.MaidProgressComboEvent;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@SuppressWarnings("removal")
 public class SlashBladeMaidBauble implements IMaidBauble {
-    @Mod.EventBusSubscriber
+    @EventBusSubscriber(modid = "native_power_of_maid")
     public static class UnawakenedSoul extends SlashBladeMaidBauble {
         @SubscribeEvent
         public static void onLivingDeathEvent(LivingDeathEvent event) {
             if (event.isCanceled()) {
                 return;
             }
-            if (event.getSource().getEntity() instanceof EntityMaid maid) {
+            if (event.getSource().getEntity() instanceof EntityMaid maid && maid.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
                 BaubleItemHandler handler = maid.getMaidBauble();
                 RandomSource random = maid.level().getRandom();
-                int exp = event.getEntity().getExperienceReward();
+                int exp = event.getEntity().getExperienceReward(serverLevel, maid);
                 long exp4 = (long) exp * exp * exp;
                 double chance = Math.min(1.0, exp4 / 100000.0);
                 if (random.nextDouble() < chance) {
@@ -45,7 +44,7 @@ public class SlashBladeMaidBauble implements IMaidBauble {
                     if (baubleIn instanceof UnawakenedSoul && random.nextDouble() < chance) {
                         String item = NativePowerOfMaidCommonConfig.UNAWAKENED_SOUL_RANGE_MAP.get(random.nextDouble() * NativePowerOfMaidCommonConfig.unawakenedSoulTotalRange);
                         if (item != null) {
-                            Item item1 = maid.level().registryAccess().registryOrThrow(Registries.ITEM).get(new ResourceLocation(item));
+                            Item item1 = maid.level().registryAccess().registryOrThrow(Registries.ITEM).get(ResourceLocation.parse(item));
                             if (item1 != null) {
                                 handler.setStackInSlot(i, new ItemStack(item1));
                             }
@@ -60,7 +59,7 @@ public class SlashBladeMaidBauble implements IMaidBauble {
         }
     }
 
-    @Mod.EventBusSubscriber
+    @EventBusSubscriber(modid = "native_power_of_maid")
     public static class ComboB extends SlashBladeMaidBauble {
         @SubscribeEvent
         public static void onMaidProgressComboEvent(MaidProgressComboEvent event) {
@@ -80,7 +79,7 @@ public class SlashBladeMaidBauble implements IMaidBauble {
         }
     }
 
-    @Mod.EventBusSubscriber
+    @EventBusSubscriber(modid = "native_power_of_maid")
     public static class ComboC extends SlashBladeMaidBauble {
         @SubscribeEvent
         public static void onMaidProgressComboEvent(MaidProgressComboEvent event) {
@@ -100,7 +99,7 @@ public class SlashBladeMaidBauble implements IMaidBauble {
         }
     }
 
-    @Mod.EventBusSubscriber
+    @EventBusSubscriber(modid = "native_power_of_maid")
     public static class RapidSlash extends SlashBladeMaidBauble {
         @SubscribeEvent
         public static void onMaidProgressComboEvent(MaidProgressComboEvent event) {
@@ -132,7 +131,7 @@ public class SlashBladeMaidBauble implements IMaidBauble {
         }
     }
 
-    @Mod.EventBusSubscriber
+    @EventBusSubscriber(modid = "native_power_of_maid")
     public static class Power extends SlashBladeMaidBauble {
         @SubscribeEvent
         public static void onPowerBladeEvent(SlashBladeEvent.PowerBladeEvent event) {
@@ -179,7 +178,7 @@ public class SlashBladeMaidBauble implements IMaidBauble {
         }
     }
 
-    @Mod.EventBusSubscriber
+    @EventBusSubscriber(modid = "native_power_of_maid")
     public static class NativePower extends SlashBladeMaidBauble {
         @SubscribeEvent
         public static void onPowerBladeEvent(SlashBladeEvent.PowerBladeEvent event) {
@@ -189,7 +188,7 @@ public class SlashBladeMaidBauble implements IMaidBauble {
         }
 
         @SubscribeEvent(priority = EventPriority.HIGH)
-        public void onMaidDeathEvent(MaidDeathEvent event) {
+        public static void onMaidDeathEvent(MaidDeathEvent event) {
             if (checkBauble(event.getMaid())) {
                 CompoundTag data = event.getMaid().getPersistentData();
                 if (data.getLong(MaidTickHandler.NATIVE_POWER_RANK) >= 0) {

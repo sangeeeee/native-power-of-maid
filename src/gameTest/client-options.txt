@@ -1,0 +1,8 @@
+onboardAccessibility:false
+pauseOnLostFocus:false
+renderDistance:4
+simulationDistance:5
+guiScale:2
+enableVsync:false
+maxFps:60
+soundCategory_master:0.0

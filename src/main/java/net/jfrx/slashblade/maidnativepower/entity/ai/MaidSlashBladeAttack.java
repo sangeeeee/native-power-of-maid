@@ -1,9 +1,9 @@
 package net.jfrx.slashblade.maidnativepower.entity.ai;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.mojang.datafixers.kinds.IdF;
 import com.mojang.datafixers.kinds.OptionalBox;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.registry.combo.ComboState;
 import mods.flammpfeil.slashblade.util.TargetSelector;
@@ -166,7 +166,7 @@ public class MaidSlashBladeAttack {
             return false;
         }
 
-        maid.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).ifPresent(state -> {
+        BladeStateAccess.of(maid.getMainHandItem()).ifPresent(state -> {
             state.setTargetEntityId(maid.getTarget());
             // 近战能打到
             if (maid.distanceTo(target) <= TargetSelector.getResolvedReach(maid)) {

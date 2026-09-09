@@ -2,7 +2,7 @@ plugins {
     id 'idea'
     id 'java-library'
     id 'maven-publish'
-    id 'net.neoforged.moddev.legacyforge' version '2.0.91'
+    id 'net.neoforged.moddev' version '2.0.91'
 }
 
 tasks.named('wrapper', Wrapper).configure {
@@ -12,7 +12,6 @@ tasks.named('wrapper', Wrapper).configure {
 version = mod_version
 group = mod_group_id
 
-repositories.clear()
 repositories {
     // Mirror Maven
     maven {
@@ -23,13 +22,8 @@ repositories {
     }
 
     maven {
-        url = "https://maven.minecraftforge.net/"
-    }
-    maven {
         url = "https://libraries.minecraft.net/"
     }
-
-    mavenLocal()
 
     maven {
         url = "https://api.modrinth.com/maven"
@@ -38,43 +32,56 @@ repositories {
         }
     }
 
-    flatDir {
-        dir 'libs'
-    }
 }
 
 base {
     archivesName = "${mod_file_name}-${minecraft_version}"
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-legacyForge {
-    version = project.minecraft_version + '-' + project.forge_version
-
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.parchment_minecraft_version
+sourceSets {
+    gameTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
     }
+}
+
+configurations {
+    gameTestImplementation.extendsFrom implementation
+    gameTestCompileOnly.extendsFrom compileOnly
+    gameTestRuntimeOnly.extendsFrom runtimeOnly
+}
+
+neoForge {
+    version = project.neo_version
+    addModdingDependenciesTo sourceSets.gameTest
 
     runs {
         client {
             client()
             gameDirectory = project.file('run/client')
-            systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        clientSmoke {
+            client()
+            gameDirectory = project.file('run/client-smoke')
+            systemProperty 'native_power_of_maid.clientSmoke', 'true'
+            programArguments.addAll '--quickPlaySingleplayer', 'native-power-smoke', '--width', '1280', '--height', '720'
         }
 
         server {
             server()
             gameDirectory = project.file('run/server')
             programArgument '--nogui'
-            systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         gameTestServer {
             type = "gameTestServer"
             gameDirectory = project.file('run/gametest')
-            systemProperty 'forge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }
 
         data {
@@ -84,23 +91,15 @@ legacyForge {
         }
 
         configureEach {
-            systemProperty 'forge.logging.markers', 'REGISTRIES'
-            logLevel = org.slf4j.event.Level.DEBUG
-
-            systemProperty 'forge.logging.console.level', 'debug'
-            systemProperty 'mixin.debug.export', 'true'
-
-            // Makes FMLEnvironment.production true in dev runs, skipping Forge's dev-only
-            // config check. touhou-little-maid-spell 1.8.x trips that check: its onLoad
-            // reads COMMON config values while only the CLIENT config has been loaded,
-            // which throws in dev but is silently ignored in production.
-//            systemProperty 'production', 'true'
+            logLevel = org.slf4j.event.Level.INFO
         }
     }
 
     mods {
         "${mod_id}" {
             sourceSet(sourceSets.main)
+            // Development tests are loaded in runs, but are not included in the release jar.
+            sourceSet(sourceSets.gameTest)
         }
     }
 }
@@ -110,48 +109,55 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 configurations {
     runtimeClasspath.extendsFrom localRuntime
 }
-obfuscation {
-    createRemappingConfiguration(configurations.localRuntime)
-}
 
 dependencies {
-    modImplementation "maven.modrinth:slashblade-resharped:${slash_blade_version}"
+    implementation "maven.modrinth:slashblade-resharped:${slash_blade_version}"
     // mrqx`s Slashblade Core
-    modImplementation "maven.modrinth:2zhQmVfn:${mrqx_slash_blade_core_version}"
+    implementation "maven.modrinth:2zhQmVfn:${mrqx_slash_blade_core_version}"
 
     // Touhou Little Maid
-    modImplementation "maven.modrinth:touhou-little-maid:${maid_version}-forge+mc${minecraft_version}"
-    modCompileOnlyApi "maven.modrinth:simplebedrockmodel:1.2.1-forge,1.20.1"
+    implementation files(maid_snapshot_jar)
+    compileOnly "maven.modrinth:simplebedrockmodel:1.4.0-neoforge+mc1.21.1"
 
-    // For test
-    modLocalRuntime "maven.modrinth:moonlight:1.20-2.16.1-forge"
-    modLocalRuntime "maven.modrinth:mmmmmmmmmmmm:1.20-2.0.9"
-//    modLocalRuntime "maven.modrinth:touhou-little-maid-spell:1.8.2-forge+mc1.20.1"
-
-    implementation "org.jetbrains:annotations:17.0.0"
+    compileOnly "org.jetbrains:annotations:17.0.0"
 }
 
-mixin {
-    add sourceSets.main, "${mod_id}.refmap.json"
-    config "${mod_id}.mixins.json"
+// The snapshot and the public release share a mod version, so the version string
+// cannot distinguish them. Verify the exact user-supplied compatibility build.
+def maidSnapshotFile = file(maid_snapshot_jar)
+tasks.register('verifyMaidSnapshot') {
+    inputs.file(maidSnapshotFile)
+    doLast {
+        def actual = java.security.MessageDigest.getInstance('SHA-256').digest(maidSnapshotFile.bytes).encodeHex().toString()
+        if (actual != 'ac7c07068be61216180a75e6845dc1e91f8c95a7c2e19ad241b81a127e7802dd') {
+            throw new GradleException('Touhou Little Maid must be the supplied 1.5.3 NeoForge 1.21.1 snapshot. See libs/README.md.')
+        }
+    }
+}
+tasks.named('compileJava') { dependsOn 'verifyMaidSnapshot' }
+
+tasks.register('prepareClientSmokeWorld', Sync) {
+    dependsOn 'runGameTestServer'
+    from 'run/gametest/world'
+    into 'run/client-smoke/saves/native-power-smoke'
+    exclude 'session.lock'
+}
+tasks.register('prepareClientSmokeOptions', Copy) {
+    from 'src/gameTest/client-options.txt'
+    into 'run/client-smoke'
+    rename { 'options.txt' }
+}
+tasks.matching { it.name == 'runClientSmoke' }.configureEach {
+    dependsOn 'prepareClientSmokeWorld', 'prepareClientSmokeOptions'
 }
 
-dependencies {
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
-}
 
-jar {
-    manifest.attributes([
-            "MixinConfigs": "${mod_id}.mixins.json"
-    ])
-}
-
-var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+var generateModMetadata = tasks.register("generateModMetadata", Sync) {
     var replaceProperties = [
             minecraft_version                  : minecraft_version,
             minecraft_version_range            : minecraft_version_range,
-            forge_version                      : forge_version,
-            forge_version_range                : forge_version_range,
+            neo_version                        : neo_version,
+            neo_version_range                  : neo_version_range,
             loader_version_range               : loader_version_range,
             mod_id                             : mod_id,
             mod_name                           : mod_name,
@@ -174,7 +180,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
 }
 
 sourceSets.main.resources.srcDir generateModMetadata
-legacyForge.ideSyncTask generateModMetadata
+neoForge.ideSyncTask generateModMetadata
 
 publishing {
     publications {

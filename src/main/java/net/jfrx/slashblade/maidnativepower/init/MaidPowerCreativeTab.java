@@ -4,14 +4,14 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import net.jfrx.slashblade.maidnativepower.NativePowerOfMaid;
 
 public class MaidPowerCreativeTab {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, NativePowerOfMaid.MODID);
 
-    public static final RegistryObject<CreativeModeTab> NATIVE_POWER_OF_MAID_GROUP = CREATIVE_MODE_TABS.register(NativePowerOfMaid.MODID, () -> CreativeModeTab.builder()
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> NATIVE_POWER_OF_MAID_GROUP = CREATIVE_MODE_TABS.register(NativePowerOfMaid.MODID, () -> CreativeModeTab.builder()
             .title(Component.translatable("item_group.native_power_of_maid"))
             .icon(() -> new ItemStack(MaidPowerItems.SOUL_OF_COMBO_B.get()))
             .displayItems((features, output) -> {

@@ -1,11 +1,11 @@
 package net.jfrx.slashblade.maidnativepower.mixin;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import mods.flammpfeil.slashblade.SlashBladeConfig;
-import mods.flammpfeil.slashblade.capability.concentrationrank.ConcentrationRankCapabilityProvider;
+import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
 import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.util.AttackHelper;
 import net.minecraft.world.entity.LivingEntity;
 import net.jfrx.slashblade.maidnativepower.item.SlashBladeMaidBauble;
@@ -20,12 +20,10 @@ public abstract class MixinAttackHelper {
     private static void injectGetRankBonus(LivingEntity attacker, CallbackInfoReturnable<Float> cir) {
         if (attacker instanceof EntityMaid maid) {
             boolean hasNativePower = SlashBladeMaidBauble.NativePower.checkBauble(maid);
-            IConcentrationRank.ConcentrationRanks rankBonus = maid.getCapability(ConcentrationRankCapabilityProvider.RANK_POINT)
-                    .map(rp -> rp.getRank(attacker.getCommandSenderWorld().getGameTime()))
-                    .orElse(IConcentrationRank.ConcentrationRanks.NONE);
+            IConcentrationRank.ConcentrationRanks rankBonus = maid.getData(CapabilityConcentrationRank.RANK_POINT).getRank(attacker.getCommandSenderWorld().getGameTime());
             double rankDamageBonus = rankBonus.level / 2.0;
             if (IConcentrationRank.ConcentrationRanks.S.level <= rankBonus.level) {
-                int refine = maid.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+                int refine = BladeStateAccess.of(maid.getMainHandItem())
                         .map(ISlashBladeState::getRefine).orElse(0);
                 int expLevel = (int) Math.floor((double) maid.getExperience() / 120);
 

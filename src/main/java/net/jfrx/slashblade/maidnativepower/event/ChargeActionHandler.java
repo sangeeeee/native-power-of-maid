@@ -1,33 +1,35 @@
 package net.jfrx.slashblade.maidnativepower.event;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
 import mods.flammpfeil.slashblade.event.SlashBladeEvent;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import mods.flammpfeil.slashblade.slasharts.SlashArts;
 import mods.flammpfeil.slashblade.util.AdvancementHelper;
 import net.jfrx.slashblade.maidnativepower.task.TaskSlashBlade;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.jfrx.slashblade.maidnativepower.item.SlashBladeMaidBauble;
 import net.jfrx.slashblade.maidnativepower.util.JustSlashArtManager;
 
-@Mod.EventBusSubscriber
+@EventBusSubscriber(modid = "native_power_of_maid")
 public class ChargeActionHandler {
     @SubscribeEvent
     public static void onPerformSlashArtEvent(SlashBladeEvent.PerformSlashArtEvent event) {
         if (event.getEntityLiving() instanceof EntityMaid maid) {
-            maid.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+            BladeStateAccess.of(maid.getMainHandItem())
                     .ifPresent(state -> onPerformSlashArt(event, maid, state));
         }
     }
 
     private static void onPerformSlashArt(SlashBladeEvent.PerformSlashArtEvent event, EntityMaid maid, ISlashBladeState state) {
         // Only check if in 拔刀剑攻击
-        if (maid.getTask().getUid() != TaskSlashBlade.UID){return;}
+        if (!TaskSlashBlade.UID.equals(maid.getTask().getUid())) {
+            return;
+        }
         if (!SlashBladeMaidBauble.JudgementCut.checkBauble(maid) && !SlashBladeMaidBauble.JustJudgementCut.checkBauble(maid)) {
             event.setCanceled(true);
             return;
@@ -40,7 +42,7 @@ public class ChargeActionHandler {
                 event.setCanceled(true);
             }
             if (event.getType() == SlashArts.ArtsType.Jackpot) {
-                AdvancementHelper.grantedIf(Enchantments.SOUL_SPEED, maid);
+                AdvancementHelper.grantedIf(maid.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT).getOrThrow(Enchantments.SOUL_SPEED).value(), maid);
             }
         }
     }

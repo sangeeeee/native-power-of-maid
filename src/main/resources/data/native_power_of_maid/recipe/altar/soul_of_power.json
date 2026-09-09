@@ -1,0 +1,32 @@
+{
+  "type": "touhou_little_maid:altar_recipe_serializers",
+  "power": 1,
+  "ingredients": [
+    {
+      "item": "touhou_little_maid:power_point"
+    },
+    {
+      "item": "slashblade:proudsoul_crystal"
+    },
+    {
+      "item": "touhou_little_maid:power_point"
+    },
+    {
+      "item": "slashblade:proudsoul_crystal"
+    },
+    {
+      "item": "touhou_little_maid:power_point"
+    },
+    {
+      "item": "slashblade:proudsoul_crystal"
+    }
+  ],
+  "category": "misc",
+  "entity": "minecraft:item",
+  "group": "altar_recipe",
+  "result": {
+    "id": "native_power_of_maid:soul_of_power",
+    "count": 1
+  },
+  "lang": "jei.native_power_of_maid.altar_craft.item_craft.result"
+}

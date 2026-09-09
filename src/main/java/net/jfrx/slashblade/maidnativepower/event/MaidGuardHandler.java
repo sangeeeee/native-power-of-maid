@@ -1,9 +1,9 @@
 package net.jfrx.slashblade.maidnativepower.event;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import mods.flammpfeil.slashblade.ability.Untouchable;
 import mods.flammpfeil.slashblade.capability.slashblade.ISlashBladeState;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import mods.flammpfeil.slashblade.registry.ComboStateRegistry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -12,10 +12,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.mrqx.sbr_core.utils.MrqxSlayerStyleArts;
 import net.jfrx.slashblade.maidnativepower.entity.ai.MaidMirageBladeBehavior;
 import net.jfrx.slashblade.maidnativepower.entity.ai.MaidSlashBladeMove;
@@ -24,7 +24,7 @@ import net.jfrx.slashblade.maidnativepower.util.MaidSlashBladeAttackUtils;
 import net.jfrx.slashblade.maidnativepower.util.MaidSlashBladeMovementUtils;
 import org.jetbrains.annotations.NotNull;
 
-@Mod.EventBusSubscriber
+@EventBusSubscriber(modid = "native_power_of_maid")
 public class MaidGuardHandler {
     public static final String GUARD_DAMAGE_COUNTER = "nativePowerOfMaid.guardDamageCounter";
     public static final String GUARD_TOTAL_DAMAGE_COUNTER = "nativePowerOfMaid.guardTotalDamageCounter";
@@ -35,15 +35,15 @@ public class MaidGuardHandler {
     public static final String GUARD_DAMAGE = "nativePowerOfMaid.guardDamage";
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onLivingAttackEvent(LivingAttackEvent event) {
+    public static void onLivingIncomingDamageEvent(LivingIncomingDamageEvent event) {
         if (!(event.getEntity() instanceof EntityMaid maid)) {
             return;
         }
-        maid.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE)
+        BladeStateAccess.of(maid.getMainHandItem())
                 .ifPresent(state -> handleGuardAttack(event, maid, state));
     }
 
-    private static void handleGuardAttack(LivingAttackEvent event, EntityMaid maid, ISlashBladeState state) {
+    private static void handleGuardAttack(LivingIncomingDamageEvent event, EntityMaid maid, ISlashBladeState state) {
         LivingEntity attacker = null;
         if (event.getSource().getEntity() instanceof LivingEntity living) {
             attacker = living;
@@ -73,7 +73,7 @@ public class MaidGuardHandler {
             boolean isProjectile = event.getSource().is(DamageTypeTags.IS_PROJECTILE)
                     || event.getSource().getDirectEntity() instanceof Projectile;
             if (!isProjectile) {
-                int soulSpeedLevel = maid.getMainHandItem().getEnchantmentLevel(Enchantments.SOUL_SPEED);
+                int soulSpeedLevel = maid.getMainHandItem().getEnchantmentLevel(maid.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT).getOrThrow(Enchantments.SOUL_SPEED));
                 int justAcceptancePeriod = 3 + soulSpeedLevel;
                 if (hasNativePower && maid.level().getGameTime() - data.getLong(DoSlashHandler.LAST_DO_SLASH_TIME) < justAcceptancePeriod) {
                     Untouchable.setUntouchable(maid, 10);

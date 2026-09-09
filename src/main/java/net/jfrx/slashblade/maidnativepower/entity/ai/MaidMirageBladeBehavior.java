@@ -1,10 +1,10 @@
 package net.jfrx.slashblade.maidnativepower.entity.ai;
 
+import mods.flammpfeil.slashblade.capability.slashblade.BladeStateAccess;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.google.common.collect.ImmutableMap;
 import mods.flammpfeil.slashblade.capability.concentrationrank.CapabilityConcentrationRank;
 import mods.flammpfeil.slashblade.capability.concentrationrank.IConcentrationRank;
-import mods.flammpfeil.slashblade.item.ItemSlashBlade;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
@@ -59,7 +59,7 @@ public class MaidMirageBladeBehavior extends Behavior<EntityMaid> {
         if (target == null) {
             return;
         }
-        if (!maid.getMainHandItem().getCapability(ItemSlashBlade.BLADESTATE).isPresent()) {
+        if (!BladeStateAccess.of(maid.getMainHandItem()).isPresent()) {
             return;
         }
         if (MaidGuardHandler.isGuarding(maid) && !nativePower) {
@@ -67,15 +67,14 @@ public class MaidMirageBladeBehavior extends Behavior<EntityMaid> {
         }
 
         int favorLevel = maid.getFavorabilityManager().getLevel();
-        int enchantPower = maid.getMainHandItem().getEnchantmentLevel(Enchantments.POWER_ARROWS);
+        int enchantPower = maid.getMainHandItem().getEnchantmentLevel(maid.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT).getOrThrow(Enchantments.POWER));
         int powerLevel = (enchantPower + favorLevel + 1) * (nativePower ? 2 : 1);
         CompoundTag data = maid.getPersistentData();
 
         switch (favorLevel) {
             case 3:
                 if (data.getInt(HEAVY_RAIN_SWORD_COUNTER_KEY) <= 0) {
-                    int rank = maid.getCapability(CapabilityConcentrationRank.RANK_POINT)
-                            .map(r -> r.getRank(maid.level().getGameTime()).level).orElse(0);
+                    int rank = maid.getData(CapabilityConcentrationRank.RANK_POINT).getRank(maid.level().getGameTime()).level;
                     MrqxSummonedSwordArts.HEAVY_RAIN_SWORD.accept(
                             maid, target, (double) powerLevel, (9 + Math.min(rank - 1, 0)) * 2);
                     data.putInt(HEAVY_RAIN_SWORD_COUNTER_KEY, 600);
@@ -83,8 +82,7 @@ public class MaidMirageBladeBehavior extends Behavior<EntityMaid> {
                 }
             case 2:
                 if (data.getInt(BLISTERING_SWORD_COUNTER_KEY) <= 0) {
-                    int rank = maid.getCapability(CapabilityConcentrationRank.RANK_POINT)
-                            .map(r -> r.getRank(maid.level().getGameTime()).level).orElse(0);
+                    int rank = maid.getData(CapabilityConcentrationRank.RANK_POINT).getRank(maid.level().getGameTime()).level;
                     int count = IConcentrationRank.ConcentrationRanks.S.level <= rank ? 8 : 6;
                     MrqxSummonedSwordArts.BLISTERING_SWORD.accept(
                             maid, target, (double) powerLevel, count);
@@ -92,8 +90,7 @@ public class MaidMirageBladeBehavior extends Behavior<EntityMaid> {
                     break;
                 }
             case 1:
-                int rank = maid.getCapability(CapabilityConcentrationRank.RANK_POINT)
-                        .map(r -> r.getRank(maid.level().getGameTime()).level).orElse(0);
+                int rank = maid.getData(CapabilityConcentrationRank.RANK_POINT).getRank(maid.level().getGameTime()).level;
                 int count = IConcentrationRank.ConcentrationRanks.S.level <= rank ? 8 : 6;
                 if (data.getInt(SPIRAL_SWORD_COUNTER_KEY) <= 0) {
                     MrqxSummonedSwordArts.SPIRAL_SWORD.accept(maid, (double) powerLevel, count);

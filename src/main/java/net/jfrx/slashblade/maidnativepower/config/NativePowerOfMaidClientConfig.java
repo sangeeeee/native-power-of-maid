@@ -1,15 +1,15 @@
 package net.jfrx.slashblade.maidnativepower.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class NativePowerOfMaidClientConfig {
-    public static final ForgeConfigSpec CLIENT_CONFIG;
-    public static final ForgeConfigSpec.DoubleValue MAID_RANK_SIZE;
-    public static final ForgeConfigSpec.IntValue MAID_RANK_X;
-    public static final ForgeConfigSpec.IntValue MAID_RANK_Y;
+    public static final ModConfigSpec CLIENT_CONFIG;
+    public static final ModConfigSpec.DoubleValue MAID_RANK_SIZE;
+    public static final ModConfigSpec.IntValue MAID_RANK_X;
+    public static final ModConfigSpec.IntValue MAID_RANK_Y;
 
     static {
-        ForgeConfigSpec.Builder clientBuilder = new ForgeConfigSpec.Builder();
+        ModConfigSpec.Builder clientBuilder = new ModConfigSpec.Builder();
 
         clientBuilder.comment("TLM: Native POWER client settings");
 

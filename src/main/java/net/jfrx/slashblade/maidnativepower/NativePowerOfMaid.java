@@ -3,11 +3,11 @@ package net.jfrx.slashblade.maidnativepower;
 import com.mojang.logging.LogUtils;
 import net.jfrx.slashblade.maidnativepower.config.NativePowerOfMaidClientConfig;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
+import net.jfrx.slashblade.maidnativepower.init.MaidPowerDataComponents;
 import net.jfrx.slashblade.maidnativepower.config.NativePowerOfMaidCommonConfig;
 import net.jfrx.slashblade.maidnativepower.init.MaidPowerCreativeTab;
 import net.jfrx.slashblade.maidnativepower.init.MaidPowerItems;
@@ -19,19 +19,22 @@ public class NativePowerOfMaid {
     public static final String MODID = "native_power_of_maid";
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    @SuppressWarnings("removal")
-    public NativePowerOfMaid() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+    public NativePowerOfMaid(IEventBus modEventBus, ModContainer container) {
+        try {
+            Class.forName("com.github.tartaricacid.touhoulittlemaid.compat.slashblade.SlashBladeCompat", false, getClass().getClassLoader());
+        } catch (ClassNotFoundException exception) {
+            throw new IllegalStateException("Native POWER of Maid requires the Touhou Little Maid 1.5.3 NeoForge 1.21.1 snapshot with SlashBlade compatibility, not the public release.", exception);
+        }
+        MaidPowerDataComponents.COMPONENTS.register(modEventBus);
         MaidPowerItems.ITEMS.register(modEventBus);
         MaidPowerCreativeTab.CREATIVE_MODE_TABS.register(modEventBus);
-        NetworkManager.register();
+        modEventBus.addListener(NetworkManager::register);
 
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, NativePowerOfMaidCommonConfig.COMMON_CONFIG);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, NativePowerOfMaidClientConfig.CLIENT_CONFIG);
+        container.registerConfig(ModConfig.Type.COMMON, NativePowerOfMaidCommonConfig.COMMON_CONFIG);
+        container.registerConfig(ModConfig.Type.CLIENT, NativePowerOfMaidClientConfig.CLIENT_CONFIG);
     }
 
-    @SuppressWarnings("removal")
     public static ResourceLocation prefix(String path) {
-        return new ResourceLocation(MODID, path);
+        return ResourceLocation.fromNamespaceAndPath(MODID, path);
     }
 }

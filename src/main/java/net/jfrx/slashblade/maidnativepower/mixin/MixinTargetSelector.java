@@ -7,13 +7,12 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.common.extensions.IForgeEntity;
-import net.minecraftforge.entity.PartEntity;
+import net.neoforged.neoforge.common.extensions.IEntityExtension;
+import net.neoforged.neoforge.entity.PartEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -21,10 +20,11 @@ import java.util.stream.Stream;
 @Mixin(TargetSelector.class)
 public abstract class MixinTargetSelector {
     @Inject(method = "getTargettableEntitiesWithinAABB(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/phys/AABB;D)Ljava/util/List;",
-            at = @At("RETURN"), locals = LocalCapture.CAPTURE_FAILHARD, remap = false)
-    private static void injectGetTargettableEntities(Level world, LivingEntity attacker, AABB aabb, double reach, CallbackInfoReturnable<List<Entity>> cir, List<Entity> list1) {
+            at = @At("RETURN"), remap = false)
+    private static void injectGetTargettableEntities(Level world, LivingEntity attacker, AABB aabb, double reach, CallbackInfoReturnable<List<Entity>> cir) {
+        List<Entity> list1 = cir.getReturnValue();
         if (attacker instanceof EntityMaid maid) {
-            list1.addAll(world.getEntitiesOfClass(LivingEntity.class, aabb.inflate(5), IForgeEntity::isMultipartEntity).stream()
+            list1.addAll(world.getEntitiesOfClass(LivingEntity.class, aabb.inflate(5), IEntityExtension::isMultipartEntity).stream()
                     .flatMap(e -> (e.isMultipartEntity()) ? Stream.of(e.getParts()) : Stream.of(e)).filter(t -> {
                         boolean result = false;
                         if (t instanceof LivingEntity living) {
