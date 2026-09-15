@@ -2,6 +2,8 @@
 
 This branch targets **Minecraft 1.21.1 / NeoForge / Java 21**.
 
+This is a NeoForge 1.21.1 port of [astro-jingtao/native-power-of-maid](https://github.com/astro-jingtao/native-power-of-maid).
+
 Required mods:
 
 | Dependency | Version used for development and testing |
@@ -20,7 +22,7 @@ Build with JDK 21:
 ./gradlew runGameTestServer
 ```
 
-On Windows use `gradlew.bat`. The installable mod is `build/libs/Native_POWER_of_Maid-1.21.1-1.0.2.jar`. Install it alongside the required mods on both client and server.
+On Windows use `gradlew.bat`. The installable mod is `build/libs/Native_POWER_of_Maid-neoforge-1.21.1-1.0.2.jar`. Install it alongside the required mods on both client and server.
 
 `runClient` starts the development client. `runClientSmoke` runs the GameTests, copies their generated world into the isolated `run/client-smoke/` directory, renders Bedrock and Gecko maids, saves a screenshot, and exits automatically. This check needs a graphical desktop. GameTest classes and structures live in `src/gameTest/` and are excluded from the release jar.
 
